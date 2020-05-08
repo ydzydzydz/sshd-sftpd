@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# chkconfig: 2345 55 25
+# description: Startup/shutdown script for sftp server;
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+RETVAL=0
+prog="sftpd"
+SFTPD=/usr/sbin/sftpd
+PID_FILE=/var/run/sftpd.pid
+
+start() {
+	# Start daemons.
+
+	# Check that networking is up.
+	[ ${NETWORKING} = "no" ] && exit 1
+
+	[ -x /usr/sbin/sftpd ] || exit 1
+
+	if [ -d /etc/ssh ] ; then
+		[ -f /etc/ssh/sftpd_config ] || exit 6
+		echo -n $"Starting $prog: "
+		daemon $SFTPD -f /etc/ssh/sftpd_config
+		RETVAL=$?
+		echo
+		if [ $RETVAL -eq 0 ] && [ ! -f /var/lock/subsys/$prog ]; then
+			touch /var/lock/subsys/$prog
+		fi
+	else
+		RETVAL=1
+	fi
+	return $RETVAL
+}
+
+stop() {
+	# Stop daemons.
+	echo -n $"Shutting down $prog: "
+	killproc $prog
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$prog
+	return $RETVAL
+}
+
+# See how we were called.
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		stop
+		start
+		RETVAL=$?
+		;;
+	status)
+		#status $prog
+		status $prog
+		RETVAL=$?
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|restart|status}"
+		exit 1
+esac
+
+exit $RETVAL
